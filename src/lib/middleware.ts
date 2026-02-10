@@ -761,16 +761,21 @@ export async function middlewareAuthSignUp(
  * AUTH - Sign out
  */
 export async function middlewareAuthSignOut(
+  token?: string | null,
   options: MiddlewareOptions = {},
 ): Promise<MiddlewareResponse<void>> {
   const startTime = Date.now();
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
 
   const executeSignOut = async () => {
-    // Call Backend API
+    // Call Backend API with auth token
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
     const response = await fetch(`${API_URL}/auth/signout`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
     });
 
     const result = await response.json();

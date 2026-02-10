@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
-import { middlewareSelect, middlewareAuthSignOut } from "@/lib/middleware";
+import { middlewareAuthSignOut } from "@/lib/middleware";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
 interface UseSessionManagerProps {
   onSessionValid?: (session: Session) => Promise<void>;
@@ -64,9 +66,8 @@ export function useSessionManager({
       );
       if (session?.user && session.user.email) {
         console.log("Setting session from auth change:", session.user.email);
-        // We can optimize here by just setting session if we trust the event,
-        // but re-validating role is safer.
-        // For now, let's just update the session and trigger callback.
+        // Set cookie for Next.js middleware route protection
+        document.cookie = `agrishield-session=${session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         setSession(session);
         if (onSessionValid) await onSessionValid(session);
       } else {
@@ -82,33 +83,45 @@ export function useSessionManager({
 
   const handleClearSession = () => {
     setSession(null);
+    // Clear auth cookie
+    document.cookie = "agrishield-session=; path=/; max-age=0; SameSite=Lax";
     if (onSessionClear) onSessionClear();
   };
 
   const handleSignOut = async () => {
-    await middlewareAuthSignOut();
+    try {
+      const currentSession = session;
+      await middlewareAuthSignOut(currentSession?.access_token);
+    } catch (e) {
+      // Continue even if sign out fails
+    }
     handleClearSession();
     setLoading(false);
   };
 
   const validateAndSetSession = async (session: Session) => {
     try {
-      // Verify user actually exists in our database
-      const userResponse = await middlewareSelect("users", "id, email", {
-        id: session.user.id,
+      // Verify user exists in our database via backend API
+      console.log("[SESSION] Validating user via backend API...");
+      const response = await fetch(`${API_URL}/auth/me`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
       });
 
-      if (
-        userResponse.status !== "success" ||
-        !userResponse.data ||
-        userResponse.data.length === 0
-      ) {
+      const result = await response.json();
+
+      if (!response.ok || result.status !== "success" || !result.data) {
         console.log("User not found in database, signing out");
         await handleSignOut();
         return;
       }
 
       console.log("Valid session and user found for:", session.user.email);
+      // Set cookie for Next.js middleware route protection
+      document.cookie = `agrishield-session=${session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       setSession(session);
       if (onSessionValid) await onSessionValid(session);
     } catch (verifyError) {

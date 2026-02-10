@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -17,14 +16,8 @@ import {
 
 export default function HomePage() {
   const router = useRouter();
-  const { session, userRole, loading, signOut } = useAuth();
+  const { session, userRole, loading, roleLoading, signOut } = useAuth();
   const isAdmin = userRole?.role === "admin";
-
-  useEffect(() => {
-    if (!loading && !session) {
-      router.push("/login");
-    }
-  }, [loading, session, router]);
 
   const adminMenuItems = [
     {
@@ -85,7 +78,7 @@ export default function HomePage() {
     },
   ];
 
-  if (loading) {
+  if (loading || roleLoading || (session && !userRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -97,7 +90,8 @@ export default function HomePage() {
   }
 
   if (!session) {
-    return null; // Will redirect in useEffect
+    // Middleware handles redirect to /login
+    return null;
   }
 
   return (

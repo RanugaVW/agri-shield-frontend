@@ -34,6 +34,7 @@ interface AuthContextType {
   session: Session | null;
   userRole: UserRole | null;
   loading: boolean;
+  roleLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
     email: string,
@@ -61,36 +62,50 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [roleLoading, setRoleLoading] = useState(false);
 
-  // Fetch Logic
-  const fetchUserRole = async (userId: string) => {
+  // Backend API URL
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+
+  // Fetch user profile from backend API
+  const fetchUserRole = async (token: string) => {
+    setRoleLoading(true);
     try {
-      const response = await middlewareSelect("users", "*", { id: userId });
+      console.log("[AUTH] Fetching user profile from backend...");
+      const response = await fetch(`${API_URL}/auth/me`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      if (
-        response.status !== "success" ||
-        !response.data ||
-        response.data.length === 0
-      ) {
-        console.error("Error fetching user role:", response.error);
+      const result = await response.json();
+      console.log("[AUTH] User profile response:", result.status, result.data);
+
+      if (!response.ok || result.status !== "success" || !result.data) {
+        console.error("[AUTH] Error fetching user profile:", result.error);
         return;
       }
 
-      const data = response.data[0];
-      const role = (data as any)?.role || "viewer";
+      const data = result.data;
+      const role = data.role || "viewer";
+      console.log("[AUTH] User role found:", role);
       setUserRole({
-        ...(data as any),
+        ...data,
         can_manage_farmers: role === "admin" || role === "agri_officer",
         can_manage_officers: role === "admin",
       });
     } catch (error) {
-      console.error("Error fetching user role:", error);
+      console.error("[AUTH] Error fetching user profile:", error);
+    } finally {
+      setRoleLoading(false);
     }
   };
 
   // Callback to fetch role when session is valid
   const handleSessionValid = async (session: Session) => {
-    await fetchUserRole(session.user.id);
+    await fetchUserRole(session.access_token);
   };
 
   // Callback to clear role when session is cleared
@@ -113,8 +128,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Explicitly set session to ensure state updates immediately
       if (response.data?.session) {
         console.log("✅ Explicitly setting session from signIn");
+        // Set cookie so Next.js middleware can detect auth state
+        document.cookie = `agrishield-session=${response.data.session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         setSession(response.data.session);
-        await fetchUserRole(response.data.session.user.id);
+        await fetchUserRole(response.data.session.access_token);
       }
     } catch (error: any) {
       throw new Error(error.message || "Failed to sign in");
@@ -171,8 +188,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Explicitly set session if returned (auto-confirm)
       if (signUpResponse.data?.session) {
         console.log("✅ Explicitly setting session from signUp");
+        // Set cookie so Next.js middleware can detect auth state
+        document.cookie = `agrishield-session=${signUpResponse.data.session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         setSession(signUpResponse.data.session);
-        await fetchUserRole(user.id);
+        await fetchUserRole(signUpResponse.data.session.access_token);
       }
     } catch (error: any) {
       throw new Error(error.message || "Failed to create account");
@@ -181,14 +200,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      const response = await middlewareAuthSignOut();
-      if (response.status !== "success") {
-        throw response.error || new Error("Failed to sign out");
-      }
+      // Get token before clearing session
+      const token = session?.access_token;
+      await middlewareAuthSignOut(token);
+    } catch (error: any) {
+      console.error("Sign out API error (continuing anyway):", error.message);
+    } finally {
+      // Always clear local state and cookie, even if backend call fails
+      document.cookie = "agrishield-session=; path=/; max-age=0; SameSite=Lax";
       setSession(null);
       setUserRole(null);
-    } catch (error: any) {
-      throw new Error(error.message || "Failed to sign out");
     }
   };
 
@@ -296,6 +317,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         userRole,
         loading,
+        roleLoading,
         signIn,
         signUp,
         signOut,

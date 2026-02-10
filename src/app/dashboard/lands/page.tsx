@@ -62,6 +62,7 @@ const CROP_TYPES = [
 ];
 
 interface Land {
+  created_at: string | number | Date;
   id: string;
   land_name: string;
   crop_type: string;
@@ -119,12 +120,12 @@ export default function LandsPage() {
         throw response.error || new Error("Failed to fetch lands");
       }
 
-      const sortedData = ((response.data as any) || []).sort(
-        (a: any, b: any) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      const sortedData = ((response.data as unknown as Land[]) || []).sort(
+        (a: unknown, b: unknown) =>
+          new Date((b as Land).created_at).getTime() - new Date((a as Land).created_at).getTime(),
       );
       setLands(sortedData as Land[]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching lands:", error);
       setError("Failed to load lands");
     } finally {
@@ -186,9 +187,10 @@ export default function LandsPage() {
       setShowModal(false);
       resetForm();
       fetchLands();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding land:", error);
-      setError(error.message || "Failed to add land");
+      const message = error instanceof Error ? error.message : "Failed to add land";
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -221,7 +223,7 @@ export default function LandsPage() {
         throw response.error || new Error("Failed to delete land");
       }
       fetchLands();
-    } catch (error: any) {
+    } catch (error: unknown) {
       setError("Failed to delete land");
     }
   };

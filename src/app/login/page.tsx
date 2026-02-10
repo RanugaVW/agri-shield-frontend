@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sprout, Mail, Lock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +22,9 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      router.push("/");
+      // Redirect to the page user was trying to access, or home
+      const redirect = searchParams.get("redirect") || "/";
+      router.push(redirect);
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     } finally {
