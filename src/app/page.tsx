@@ -26,7 +26,7 @@ export default function HomePage() {
       subtitle: "View & manage all users",
       icon: Users,
       color: "#06923E",
-      route: "/admin/users",
+      route: "/dashboard/users",
     },
     {
       id: "lands",
@@ -34,7 +34,7 @@ export default function HomePage() {
       subtitle: "All registered agricultural lands",
       icon: Leaf,
       color: "#06923E",
-      route: "/admin/lands",
+      route: "/dashboard/lands",
     },
     {
       id: "weather",
@@ -42,7 +42,7 @@ export default function HomePage() {
       subtitle: "Monitor weather data",
       icon: Cloud,
       color: "#E67514",
-      route: "/admin/weather",
+      route: "/dashboard/weather",
     },
     {
       id: "observations",
@@ -50,7 +50,7 @@ export default function HomePage() {
       subtitle: "Review farmer submissions",
       icon: Bug,
       color: "#06923E",
-      route: "/admin/observations",
+      route: "/dashboard/observations",
     },
     {
       id: "disasters",
@@ -58,7 +58,7 @@ export default function HomePage() {
       subtitle: "Manage disaster incidents",
       icon: AlertTriangle,
       color: "#FF1E00",
-      route: "/admin/disasters",
+      route: "/dashboard/disasters",
     },
     {
       id: "compensation",
@@ -66,7 +66,7 @@ export default function HomePage() {
       subtitle: "Track claims and payments",
       icon: DollarSign,
       color: "#06923E",
-      route: "/admin/compensation",
+      route: "/dashboard/compensation",
     },
     {
       id: "warnings",
@@ -74,7 +74,7 @@ export default function HomePage() {
       subtitle: "Predictive alerts & analysis",
       icon: TrendingUp,
       color: "#E67514",
-      route: "/admin/warnings",
+      route: "/dashboard/warnings",
     },
   ];
 
@@ -136,7 +136,7 @@ export default function HomePage() {
               Admin Access Required
             </h2>
             <p className="text-gray-600 mb-6">
-              You don't have admin permissions to access this dashboard
+              You don&apos;t have admin permissions to access this dashboard
             </p>
             <div className="space-x-4">
               <button
